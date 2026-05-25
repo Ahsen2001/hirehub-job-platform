@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  RECRUITER
+  CANDIDATE
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  INTERVIEW
+  OFFERED
+  REJECTED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  INTERNSHIP
+  CONTRACT
+  REMOTE
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum InterviewMode {
+  PHONE
+  VIDEO
+  ONSITE
+}
+
+model User {
+  id                 String        @id @default(uuid()) @db.Uuid
+  email              String        @unique
+  passwordHash       String?
+  role               Role          @default(CANDIDATE)
+  isActive           Boolean       @default(true)
+  emailVerifiedAt    DateTime?
+  lastLoginAt        DateTime?
+  authProviderId     String?       @unique
+  recruiterCompanyId String?       @db.Uuid
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  profile              Profile?
+  recruiterCompany     Company?       @relation("CompanyRecruiters", fields: [recruiterCompanyId], references: [id], onDelete: SetNull)
+  ownedCompanies       Company[]      @relation("CompanyOwner")
+  postedJobs           Job[]          @relation("JobRecruiter")
+  applications         Application[]  @relation("CandidateApplications")
+  interviews           Interview[]    @relation("InterviewInterviewer")
+  activityLogs         ActivityLog[]  @relation("ActivityActor")
+
+  @@index([role])
+  @@index([recruiterCompanyId])
+  @@index([createdAt])
+}
+
+model Profile {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @unique @db.Uuid
+  firstName    String
+  lastName     String
+  phone        String?
+  headline     String?
+  bio          String?
+  location     String?
+  resumeUrl    String?
+  avatarUrl    String?
+  websiteUrl   String?
+  linkedinUrl  String?
+  githubUrl    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills          Skill[]
+  education       Education[]
+  workExperience  WorkExperience[]
+
+  @@index([location])
+  @@index([createdAt])
+}
+
+model Company {
+  id          String   @id @default(uuid()) @db.Uuid
+  ownerId     String?  @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  websiteUrl  String?
+  logoUrl     String?
+  industry    String?
+  location    String?
+  size        String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner      User?  @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  recruiters User[] @relation("CompanyRecruiters")
+  jobs       Job[]
+
+  @@index([ownerId])
+  @@index([industry])
+  @@index([location])
+  @@index([isVerified])
+}
+
+model JobCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobs Job[]
+}
+
+model Job {
+  id               String    @id @default(uuid()) @db.Uuid
+  companyId        String    @db.Uuid
+  categoryId       String?   @db.Uuid
+  recruiterId      String?   @db.Uuid
+  title            String
+  slug             String
+  description      String
+  responsibilities String[]  @default([])
+  requirements     String[]  @default([])
+  benefits         String[]  @default([])
+  location         String
+  salaryMin        Int?
+  salaryMax        Int?
+  salaryCurrency   String    @default("USD")
+  type             JobType
+  status           JobStatus @default(OPEN)
+  isFeatured       Boolean   @default(false)
+  publishedAt      DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category     JobCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recruiter    User?         @relation("JobRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+  applications Application[]
+
+  @@unique([companyId, slug])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([recruiterId])
+  @@index([status])
+  @@index([type])
+  @@index([location])
+  @@index([isFeatured])
+  @@index([createdAt])
+}
+
+model Application {
+  id            String            @id @default(uuid()) @db.Uuid
+  jobId         String            @db.Uuid
+  candidateId   String            @db.Uuid
+  status        ApplicationStatus @default(APPLIED)
+  coverLetter   String?
+  resumeUrl     String?
+  expectedSalary Int?
+  notes         String?
+  appliedAt     DateTime          @default(now())
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate  User        @relation("CandidateApplications", fields: [candidateId], references: [id], onDelete: Cascade)
+  interviews Interview[]
+
+  @@unique([jobId, candidateId])
+  @@index([candidateId])
+  @@index([jobId])
+  @@index([status])
+  @@index([appliedAt])
+}
+
+model Skill {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  profiles Profile[]
+
+  @@index([name])
+}
+
+model Education {
+  id           String    @id @default(uuid()) @db.Uuid
+  profileId    String    @db.Uuid
+  institution  String
+  degree       String
+  fieldOfStudy String?
+  startDate    DateTime?
+  endDate      DateTime?
+  isCurrent    Boolean   @default(false)
+  description  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([institution])
+}
+
+model WorkExperience {
+  id          String    @id @default(uuid()) @db.Uuid
+  profileId   String    @db.Uuid
+  company     String
+  title       String
+  location    String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isCurrent   Boolean   @default(false)
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([company])
+  @@index([title])
+}
+
+model Interview {
+  id             String          @id @default(uuid()) @db.Uuid
+  applicationId  String          @db.Uuid
+  interviewerId  String?         @db.Uuid
+  title          String
+  scheduledAt    DateTime
+  durationMins   Int             @default(30)
+  mode           InterviewMode   @default(VIDEO)
+  status         InterviewStatus @default(SCHEDULED)
+  meetingUrl     String?
+  location       String?
+  feedback       String?
+  score          Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer User?       @relation("InterviewInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@index([interviewerId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  actor User? @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model PlatformSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       Json
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublic])
+}
