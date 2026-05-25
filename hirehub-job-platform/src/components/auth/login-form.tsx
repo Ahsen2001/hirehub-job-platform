@@ -1,35 +1,26 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { loginUser, type AuthActionState } from "@/app/actions/auth";
 
-type LoginRole = "candidate" | "recruiter";
-
-const redirectByRole: Record<LoginRole, string> = {
-  candidate: "/jobs",
-  recruiter: "/unauthorized",
-};
+const initialState: AuthActionState = {};
 
 export function LoginForm() {
-  const router = useRouter();
-  const [role, setRole] = useState<LoginRole>("candidate");
-  const [isLoading, setIsLoading] = useState(false);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
-
-    window.setTimeout(() => {
-      router.push(redirectByRole[role]);
-    }, 350);
-  }
+  const [state, formAction] = useActionState(loginUser, initialState);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form action={formAction} className="space-y-4">
+      {state.error ? (
+        <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-danger">
+          {state.error}
+        </div>
+      ) : null}
+
       <label className="grid gap-2 text-sm font-semibold text-dark">
         Email
         <input
+          name="email"
           type="email"
           required
           placeholder="you@example.com"
@@ -40,6 +31,7 @@ export function LoginForm() {
       <label className="grid gap-2 text-sm font-semibold text-dark">
         Password
         <input
+          name="password"
           type="password"
           required
           placeholder="Enter your password"
@@ -47,29 +39,21 @@ export function LoginForm() {
         />
       </label>
 
-      <div className="grid gap-2 text-sm font-semibold text-dark">
-        Account type
-        <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-          {(["candidate", "recruiter"] as LoginRole[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setRole(item)}
-              className={
-                role === item
-                  ? "h-10 rounded-lg bg-white text-sm font-semibold capitalize text-primary shadow-sm"
-                  : "h-10 rounded-lg text-sm font-semibold capitalize text-slate-600 transition-colors hover:text-dark"
-              }
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Button className="w-full" size="lg" isLoading={isLoading}>
-        Sign in
-      </Button>
+      <SubmitButton />
     </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary px-5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? "Signing in..." : "Sign in"}
+    </button>
   );
 }
