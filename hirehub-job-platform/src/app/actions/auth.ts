@@ -16,6 +16,9 @@ export type AuthActionState = {
   error?: string;
 };
 
+const databaseErrorMessage =
+  "Database is not configured yet. Add DATABASE_URL to .env.local, run migrations, then seed the database.";
+
 export async function loginUser(
   _previousState: AuthActionState,
   formData: FormData,
@@ -29,33 +32,40 @@ export async function loginUser(
     return { error: getFirstZodError(parsed.error) };
   }
 
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
-    include: { profile: true },
-  });
+  let user;
 
-  if (!user?.passwordHash || !user.isActive) {
-    return { error: "Invalid email or password." };
-  }
+  try {
+    const prisma = getPrisma();
+    user = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+      include: { profile: true },
+    });
 
-  const isValidPassword = await verifyPassword(
-    parsed.data.password,
-    user.passwordHash,
-  );
+    if (!user?.passwordHash || !user.isActive) {
+      return { error: "Invalid email or password." };
+    }
 
-  if (!isValidPassword) {
-    return { error: "Invalid email or password." };
+    const isValidPassword = await verifyPassword(
+      parsed.data.password,
+      user.passwordHash,
+    );
+
+    if (!isValidPassword) {
+      return { error: "Invalid email or password." };
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+  } catch (error) {
+    console.error("Login failed before session creation:", error);
+    return { error: databaseErrorMessage };
   }
 
   const name = [user.profile?.firstName, user.profile?.lastName]
     .filter(Boolean)
     .join(" ");
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
 
   await setSessionCookie({
     id: user.id,
@@ -85,58 +95,65 @@ export async function registerUser(
     return { error: getFirstZodError(parsed.error) };
   }
 
-  const prisma = getPrisma();
-  const existingUser = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
-    select: { id: true },
-  });
+  let user;
 
-  if (existingUser) {
-    return { error: "An account already exists for this email." };
-  }
-
-  const passwordHash = await hashPassword(parsed.data.password);
-  const [firstName, ...lastNameParts] = parsed.data.name.split(" ");
-  const role = parsed.data.role as Role;
-
-  const user = await prisma.user.create({
-    data: {
-      email: parsed.data.email,
-      passwordHash,
-      role,
-      profile: {
-        create: {
-          firstName,
-          lastName: lastNameParts.join(" ") || "User",
-          headline:
-            role === "CANDIDATE"
-              ? parsed.data.desiredRole || "HireHub candidate"
-              : "HireHub recruiter",
-        },
-      },
-    },
-    include: { profile: true },
-  });
-
-  if (role === "RECRUITER" && parsed.data.companyName) {
-    const slug = parsed.data.companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "");
-
-    const company = await prisma.company.create({
-      data: {
-        name: parsed.data.companyName,
-        slug: `${slug}-${user.id.slice(0, 8)}`,
-        ownerId: user.id,
-      },
+  try {
+    const prisma = getPrisma();
+    const existingUser = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
       select: { id: true },
     });
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { recruiterCompanyId: company.id },
+    if (existingUser) {
+      return { error: "An account already exists for this email." };
+    }
+
+    const passwordHash = await hashPassword(parsed.data.password);
+    const [firstName, ...lastNameParts] = parsed.data.name.split(" ");
+    const role = parsed.data.role as Role;
+
+    user = await prisma.user.create({
+      data: {
+        email: parsed.data.email,
+        passwordHash,
+        role,
+        profile: {
+          create: {
+            firstName,
+            lastName: lastNameParts.join(" ") || "User",
+            headline:
+              role === "CANDIDATE"
+                ? parsed.data.desiredRole || "HireHub candidate"
+                : "HireHub recruiter",
+          },
+        },
+      },
+      include: { profile: true },
     });
+
+    if (role === "RECRUITER" && parsed.data.companyName) {
+      const slug = parsed.data.companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+
+      const company = await prisma.company.create({
+        data: {
+          name: parsed.data.companyName,
+          slug: `${slug}-${user.id.slice(0, 8)}`,
+          ownerId: user.id,
+        },
+        select: { id: true },
+      });
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { recruiterCompanyId: company.id },
+      });
+    }
+  } catch (error) {
+    console.error("Registration failed before session creation:", error);
+    return { error: databaseErrorMessage };
   }
 
   const name = [user.profile?.firstName, user.profile?.lastName]
