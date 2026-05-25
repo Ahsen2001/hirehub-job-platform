@@ -1,119 +1,105 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import { EmptyState } from "@/components/ui/empty-state";
-import { JobCard } from "@/components/jobs/job-card";
-import type { Job } from "@/data/jobs";
+import Link from "next/link";
+import { JobType } from "@/generated/prisma/client";
 
 type JobsFilterProps = {
-  jobs: Job[];
+  query?: string;
+  location?: string;
+  category?: string;
+  type?: string;
   locations: string[];
-  categories: string[];
-  types: string[];
+  categories: Array<{ id: string; name: string }>;
+};
+
+const jobTypeLabels: Record<JobType, string> = {
+  FULL_TIME: "Full time",
+  PART_TIME: "Part time",
+  INTERNSHIP: "Internship",
+  CONTRACT: "Contract",
+  REMOTE: "Remote",
 };
 
 export function JobsFilter({
-  jobs,
+  query = "",
+  location = "",
+  category = "",
+  type = "",
   locations,
   categories,
-  types,
 }: JobsFilterProps) {
-  const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("All");
-  const [category, setCategory] = useState("All");
-  const [type, setType] = useState("All");
-
-  const filteredJobs = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    return jobs.filter((job) => {
-      const matchesQuery =
-        !normalizedQuery ||
-        [job.title, job.company, job.description]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery);
-      const matchesLocation = location === "All" || job.location === location;
-      const matchesCategory = category === "All" || job.category === category;
-      const matchesType = type === "All" || job.type === type;
-
-      return matchesQuery && matchesLocation && matchesCategory && matchesType;
-    });
-  }, [category, jobs, location, query, type]);
-
   return (
-    <div className="space-y-6">
-      <div className="rounded-card border border-border bg-white p-4 shadow-card">
-        <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <label className="grid gap-2 text-sm font-semibold text-dark">
-            Search jobs
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Job title, company, or keyword"
-              className="h-11 rounded-lg border border-border bg-white px-3 text-sm font-medium text-text outline-none transition-colors placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-blue-100"
-            />
-          </label>
+    <form className="rounded-card border border-border bg-white p-4 shadow-card">
+      <div className="grid gap-3 lg:grid-cols-[1.35fr_1fr_1fr_1fr_auto]">
+        <label className="grid gap-2 text-sm font-semibold text-dark">
+          Search jobs
+          <input
+            name="q"
+            defaultValue={query}
+            placeholder="Job title or company name"
+            className="h-11 rounded-lg border border-border bg-white px-3 text-sm font-medium text-text outline-none transition-colors placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-blue-100"
+          />
+        </label>
 
-          <FilterSelect
-            label="Location"
-            value={location}
-            values={locations}
-            onChange={setLocation}
-          />
-          <FilterSelect
-            label="Category"
-            value={category}
-            values={categories}
-            onChange={setCategory}
-          />
-          <FilterSelect
-            label="Job type"
-            value={type}
-            values={types}
-            onChange={setType}
-          />
+        <FilterSelect label="Location" name="location" value={location}>
+          {locations.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </FilterSelect>
+
+        <FilterSelect label="Category" name="category" value={category}>
+          {categories.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </FilterSelect>
+
+        <FilterSelect label="Job type" name="type" value={type}>
+          {Object.values(JobType).map((item) => (
+            <option key={item} value={item}>
+              {jobTypeLabels[item]}
+            </option>
+          ))}
+        </FilterSelect>
+
+        <div className="flex items-end gap-2">
+          <button className="h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-dark">
+            Search
+          </button>
+          <Link
+            href="/jobs"
+            className="inline-flex h-11 items-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-dark transition-colors hover:border-primary hover:text-primary"
+          >
+            Clear
+          </Link>
         </div>
       </div>
-
-      {filteredJobs.length > 0 ? (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          title="No jobs found"
-          description="Try changing your search terms or filters to discover more roles."
-        />
-      )}
-    </div>
+    </form>
   );
 }
 
-type FilterSelectProps = {
+function FilterSelect({
+  label,
+  name,
+  value,
+  children,
+}: {
   label: string;
+  name: string;
   value: string;
-  values: string[];
-  onChange: (value: string) => void;
-};
-
-function FilterSelect({ label, value, values, onChange }: FilterSelectProps) {
+  children: React.ReactNode;
+}) {
   return (
     <label className="grid gap-2 text-sm font-semibold text-dark">
       {label}
       <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        name={name}
+        defaultValue={value}
         className="h-11 rounded-lg border border-border bg-white px-3 text-sm font-medium text-text outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-blue-100"
       >
-        <option value="All">All</option>
-        {values.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
+        <option value="">All</option>
+        {children}
       </select>
     </label>
   );

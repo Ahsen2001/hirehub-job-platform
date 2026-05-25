@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { JobCard } from "@/components/jobs/job-card";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -140,7 +139,33 @@ export default function Home() {
         </div>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {featuredJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <Card key={job.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>{job.title}</CardTitle>
+                    <CardDescription>{job.company}</CardDescription>
+                  </div>
+                  <Badge variant="primary">Featured</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="line-clamp-3 text-sm leading-6 text-muted">
+                  {job.description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{job.location}</Badge>
+                  <Badge variant="outline">{job.type}</Badge>
+                  <Badge variant="outline">{job.category}</Badge>
+                </div>
+                <Link
+                  href="/jobs"
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                >
+                  Browse jobs
+                </Link>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
