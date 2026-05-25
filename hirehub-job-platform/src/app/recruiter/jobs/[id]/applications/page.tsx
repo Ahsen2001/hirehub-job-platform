@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ApplicationStatus } from "@/generated/prisma/client";
 import {
   DashboardMetric,
@@ -14,10 +14,11 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { getPrisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
-  title: "Applications | HireHub",
+  title: "Job Applications | HireHub",
 };
 
-type RecruiterApplicationsPageProps = {
+type JobApplicationsPageProps = {
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ updated?: string }>;
 };
 
@@ -46,10 +47,15 @@ type PipelineApplicationRecord = {
   interviews: { title: string; scheduledAt: Date }[];
 };
 
-export default async function RecruiterApplicationsPage({
+export default async function JobApplicationsPage({
+  params,
   searchParams,
-}: RecruiterApplicationsPageProps) {
-  const [user, query] = await Promise.all([getCurrentUser(), searchParams]);
+}: JobApplicationsPageProps) {
+  const [{ id }, query, user] = await Promise.all([
+    params,
+    searchParams,
+    getCurrentUser(),
+  ]);
 
   if (!user) {
     redirect("/login");
@@ -60,15 +66,27 @@ export default async function RecruiterApplicationsPage({
   }
 
   const prisma = getPrisma();
+  const job = await prisma.job.findFirst({
+    where: { id, recruiterId: user.id },
+    select: {
+      id: true,
+      title: true,
+      company: { select: { name: true } },
+    },
+  });
+
+  if (!job) {
+    notFound();
+  }
+
   const applications = await prisma.application.findMany({
-    where: { job: { recruiterId: user.id } },
+    where: { jobId: job.id, job: { recruiterId: user.id } },
     orderBy: [{ appliedAt: "desc" }],
     include: {
       job: {
         select: {
           id: true,
           title: true,
-          company: { select: { name: true } },
         },
       },
       candidate: {
@@ -95,14 +113,14 @@ export default async function RecruiterApplicationsPage({
   return (
     <>
       <DashboardPageHeader
-        title="Application Pipeline"
-        description="Review candidates across all jobs you posted and move applications through each hiring stage."
+        title={`${job.title} Applications`}
+        description={`Review applicants for ${job.company.name} and move them through the hiring pipeline.`}
         action={
           <Link
-            href="/recruiter/jobs"
+            href="/recruiter/applications"
             className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-dark transition-colors hover:border-primary hover:text-primary"
           >
-            View Jobs
+            All Applications
           </Link>
         }
       />
@@ -114,33 +132,20 @@ export default async function RecruiterApplicationsPage({
       ) : null}
 
       <section className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-        <DashboardMetric
-          label="Applied"
-          value={(counts.get(ApplicationStatus.APPLIED) ?? 0).toString()}
-        />
-        <DashboardMetric
-          label="Shortlisted"
-          value={(counts.get(ApplicationStatus.SHORTLISTED) ?? 0).toString()}
-        />
-        <DashboardMetric
-          label="Interview"
-          value={(counts.get(ApplicationStatus.INTERVIEW) ?? 0).toString()}
-        />
-        <DashboardMetric
-          label="Offered"
-          value={(counts.get(ApplicationStatus.OFFERED) ?? 0).toString()}
-        />
-        <DashboardMetric
-          label="Rejected"
-          value={(counts.get(ApplicationStatus.REJECTED) ?? 0).toString()}
-        />
+        {applicationStatuses.map((status) => (
+          <DashboardMetric
+            key={status}
+            label={formatConstant(status)}
+            value={(counts.get(status) ?? 0).toString()}
+          />
+        ))}
       </section>
 
       <ApplicationPipeline
         applications={applications.map(toPipelineApplication)}
-        redirectTo="/recruiter/applications"
-        emptyTitle="No applications yet"
-        emptyDescription="Applications for jobs you posted will appear here as candidates apply."
+        redirectTo={`/recruiter/jobs/${job.id}/applications`}
+        emptyTitle="No applications for this job"
+        emptyDescription="Candidate applications for this job will appear here once submitted."
       />
     </>
   );
@@ -171,6 +176,14 @@ function toPipelineApplication(
         }
       : null,
   };
+}
+
+function formatConstant(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function formatDate(date: Date) {

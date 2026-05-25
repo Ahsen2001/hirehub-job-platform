@@ -114,6 +114,12 @@ export default async function RecruiterJobsPage({
                         {job._count.applications} applications
                       </div>
                       <Link
+                        href={`/recruiter/jobs/${job.id}/applications`}
+                        className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-3 text-sm font-semibold text-dark transition-colors hover:border-primary hover:text-primary"
+                      >
+                        Pipeline
+                      </Link>
+                      <Link
                         href={`/recruiter/jobs/${job.id}/edit`}
                         className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-3 text-sm font-semibold text-dark transition-colors hover:border-primary hover:text-primary"
                       >
