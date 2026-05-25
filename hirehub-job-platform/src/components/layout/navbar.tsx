@@ -3,10 +3,10 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { label: "Jobs", href: "#" },
+  { label: "Jobs", href: "/jobs" },
   { label: "Companies", href: "#" },
-  { label: "Applications", href: "#" },
-  { label: "Pricing", href: "#" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Register", href: "/register" },
 ];
 
 export function Navbar() {
@@ -15,7 +15,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/hirehub-logo-light.svg"
+            src="/hirehub-logo-dark.svg"
             alt="HireHub"
             width={148}
             height={36}
@@ -37,9 +37,12 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" className="hidden sm:inline-flex">
+          <Link
+            href="/login"
+            className="hidden h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-dark sm:inline-flex"
+          >
             Sign in
-          </Button>
+          </Link>
           <Button>Post a job</Button>
         </div>
       </div>
