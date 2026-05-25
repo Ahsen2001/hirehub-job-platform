@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JobStatus, JobType } from "@/generated/prisma/client";
-import { applyToJob } from "@/app/jobs/actions";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -107,6 +106,7 @@ export default async function JobDetailPage({
             </div>
             <ApplyArea
               slug={job.slug}
+              jobId={job.id}
               userRole={user?.role}
               existingApplication={existingApplication}
               applied={query.applied === "1"}
@@ -151,6 +151,7 @@ export default async function JobDetailPage({
               />
               <ApplyArea
                 slug={job.slug}
+                jobId={job.id}
                 userRole={user?.role}
                 existingApplication={existingApplication}
                 compact
@@ -195,6 +196,7 @@ export default async function JobDetailPage({
 
 function ApplyArea({
   slug,
+  jobId,
   userRole,
   existingApplication,
   applied,
@@ -202,6 +204,7 @@ function ApplyArea({
   compact = false,
 }: {
   slug: string;
+  jobId: string;
   userRole?: string;
   existingApplication: { id: string; status: string } | null;
   applied: boolean;
@@ -249,12 +252,12 @@ function ApplyArea({
   }
 
   return (
-    <form action={applyToJob}>
-      <input type="hidden" name="slug" value={slug} />
-      <button className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary px-5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark">
-        Apply now
-      </button>
-    </form>
+    <Link
+      href={`/candidate/apply/${jobId}`}
+      className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary px-5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark"
+    >
+      Apply now
+    </Link>
   );
 }
 
