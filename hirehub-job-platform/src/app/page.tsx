@@ -77,7 +77,7 @@ export default function Home() {
             <div>
               <Badge variant="primary">Hiring dashboard</Badge>
               <h1 className="mt-3 text-2xl font-bold text-dark sm:text-3xl">
-                CareerConnect Job Application Platform
+                HireHub Job Application Platform
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
                 Track job posts, review candidates, and keep hiring decisions

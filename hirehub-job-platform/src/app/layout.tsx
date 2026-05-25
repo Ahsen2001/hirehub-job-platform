@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CareerConnect Job Application Platform",
+  title: "HireHub Job Application Platform",
   description: "A modern job application platform for candidates and hiring teams.",
+  icons: {
+    icon: "/hirehub-favicon.svg",
+    shortcut: "/hirehub-favicon.svg",
+    apple: "/hirehub-favicon.svg",
+  },
 };
 
 export default function RootLayout({
