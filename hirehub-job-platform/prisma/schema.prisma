@@ -79,6 +79,7 @@ model Profile {
   firstName    String
   lastName     String
   phone        String?
+  address      String?
   headline     String?
   bio          String?
   location     String?
